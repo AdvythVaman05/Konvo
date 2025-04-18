@@ -35,6 +35,8 @@ def login():
                 "password": password
             })
             st.session_state['user'] = response.user
+            st.session_state['access_token'] = response.session.access_token
+            supabase.auth.set_session(response.session.access_token)
             st.success("Logged in successfully!")
         except Exception as e:
             st.error(f"Login failed: {str(e)}")
@@ -59,6 +61,7 @@ def logout():
     st.session_state['user'] = None
     st.session_state['recipient_id'] = None
     st.session_state['messages'] = []
+    st.session_state.pop('access_token', None)
     st.success("Logged out successfully!")
 
 # Image Upload Function
@@ -88,9 +91,13 @@ def display_image(url):
 # Fetch Users
 def get_users():
     try:
+        # Ensure the client uses the current session
+        if 'access_token' in st.session_state:
+            supabase.auth.set_session(st.session_state['access_token'])
         users = supabase.table("users").select("id, email").execute()
         return [(user['id'], user['email']) for user in users.data if user['id'] != st.session_state['user'].id]
-    except:
+    except Exception as e:
+        st.error(f"Error fetching users: {str(e)}")
         return []
 
 # Load Message History
